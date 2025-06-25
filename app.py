@@ -41,7 +41,8 @@ def generate_output2():
     selected_months = request.form.getlist("months[]")
     selected_category2 = request.form.getlist("category2[]")
     selected_category3 = request.form.getlist("category3[]")
-    filter_top5 = request.form.get("filter") == "top5"
+    filter_type = request.form.get("filterType", "top5")
+    filter_top5 = filter_type == "top5"
 
     try:
         df = pd.read_excel(file, sheet_name="Data")
@@ -63,22 +64,16 @@ def generate_output2():
         pivot["Grand Total"] = pivot.sum(axis=1)
         pivot = pivot.reset_index()
 
-        # คำนวณ Grand Total รวมต่อหมวดหมู่2 เพื่อใช้จัดลำดับ
         total_by_cat2 = pivot.groupby("หมวดหมู่2")["Grand Total"].sum().reset_index()
         total_by_cat2.columns = ["หมวดหมู่2", "DEBUG_Total_หมวดหมู่2"]
-
         pivot = pivot.merge(total_by_cat2, on="หมวดหมู่2", how="left")
         pivot = pivot.sort_values(by=["DEBUG_Total_หมวดหมู่2", "หมวดหมู่2", "หมวดหมู่3"], ascending=[False, True, True])
 
-        # สร้างคอลัมน์ "ลำดับ"
-        pivot["ลำดับ"] = pivot["หมวดหมู่2"].map(
-            {cat2: i+1 for i, cat2 in enumerate(pivot["หมวดหมู่2"].drop_duplicates())}
-        )
+        pivot["ลำดับ"] = pivot["หมวดหมู่2"].map({cat2: i+1 for i, cat2 in enumerate(pivot["หมวดหมู่2"].drop_duplicates())})
 
-        # เรียงคอลัมน์ใหม่
         ordered_cols = ["ลำดับ", "หมวดหมู่2", "หมวดหมู่3"] + selected_months + ["Grand Total"]
         if "DEBUG_Total_หมวดหมู่2" in pivot.columns:
-            ordered_cols += ["DEBUG_Total_หมวดหมู่2"]
+            ordered_cols.append("DEBUG_Total_หมวดหมู่2")
         pivot = pivot[ordered_cols]
 
         if filter_top5:
