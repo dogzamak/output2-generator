@@ -1,6 +1,6 @@
 
 <!DOCTYPE html>
-<html lang="en">
+<html lang="th">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
@@ -35,8 +35,8 @@
 
     <div id="selectors" style="display:none;">
       <div class="mb-3">
-        <label class="form-label">เดือน (Month):</label>
-        <select class="form-select" id="monthSelect"></select>
+        <label class="form-label">เลือกเดือน (Month):</label>
+        <select class="form-select" id="monthSelect" multiple></select>
       </div>
 
       <div class="mb-3">
@@ -51,6 +51,18 @@
         <button class="btn btn-outline-primary btn-sm" id="addAllCategory3">Add All</button>
       </div>
 
+      <div class="mb-3">
+        <label class="form-label">ประเภทผลลัพธ์:</label><br>
+        <div class="form-check form-check-inline">
+          <input class="form-check-input" type="radio" name="filterType" id="top5" value="top5" checked>
+          <label class="form-check-label" for="top5">Top 5</label>
+        </div>
+        <div class="form-check form-check-inline">
+          <input class="form-check-input" type="radio" name="filterType" id="all" value="all">
+          <label class="form-check-label" for="all">แสดงทั้งหมด</label>
+        </div>
+      </div>
+
       <button class="btn btn-success" id="downloadBtn">📥 ดาวน์โหลด Output2</button>
     </div>
   </div>
@@ -60,10 +72,7 @@
 
     $("#uploadBtn").click(function () {
       const file = $("#fileInput")[0].files[0];
-      if (!file) {
-        alert("กรุณาเลือกไฟล์ก่อน");
-        return;
-      }
+      if (!file) return alert("กรุณาเลือกไฟล์ก่อน");
 
       const formData = new FormData();
       formData.append("rawFile", file);
@@ -74,10 +83,7 @@
       })
         .then((res) => res.json())
         .then((data) => {
-          if (data.error) {
-            alert("เกิดข้อผิดพลาด: " + data.error);
-            return;
-          }
+          if (data.error) return alert("❌ " + data.error);
 
           $("#selectors").show();
 
@@ -96,11 +102,9 @@
             cat3.append(`<option value="${c}">${c}</option>`);
           });
 
-          $("#category2Select, #category3Select").select2();
+          $("#monthSelect, #category2Select, #category3Select").select2();
         })
-        .catch((err) => {
-          alert("❌ เกิดข้อผิดพลาดในการติดต่อเซิร์ฟเวอร์");
-        });
+        .catch(() => alert("❌ ไม่สามารถโหลดข้อมูลจาก backend ได้"));
     });
 
     $("#addAllCategory2").click(() => {
@@ -115,15 +119,22 @@
 
     $("#downloadBtn").click(function () {
       const file = $("#fileInput")[0].files[0];
-      const month = $("#monthSelect").val();
+      const months = $("#monthSelect").val();
       const cat2 = $("#category2Select").val();
       const cat3 = $("#category3Select").val();
+      const filterType = $("input[name='filterType']:checked").val();
+
+      if (!file || !months.length || !cat2.length || !cat3.length) {
+        alert("กรุณาเลือกข้อมูลให้ครบทุกช่อง");
+        return;
+      }
 
       const formData = new FormData();
       formData.append("rawFile", file);
-      formData.append("month", month);
-      formData.append("category2", JSON.stringify(cat2));
-      formData.append("category3", JSON.stringify(cat3));
+      months.forEach((m) => formData.append("months[]", m));
+      cat2.forEach((c) => formData.append("category2[]", c));
+      cat3.forEach((c) => formData.append("category3[]", c));
+      formData.append("filterType", filterType);
 
       fetch(backendURL + "/generate_output2", {
         method: "POST",
