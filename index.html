@@ -1,0 +1,66 @@
+
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Output2 Generator</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+  <script>
+  <style>
+    body { background: #f8f9fa; padding-top: 40px; }
+    .container { max-width: 700px; }
+    h1 { text-align: center; margin-bottom: 30px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1><img src="https://img.icons8.com/external-flat-juicy-fish/32/null/external-report-ux-and-ui-flat-flat-juicy-fish.png"/> Output2 Generator</h1>
+    <div class="mb-3">
+      <label for="fileInput" class="form-label fw-bold">อัปโหลดไฟล์ Excel (.xlsx)</label>
+      <input type="file" class="form-control mb-2" id="fileInput" accept=".xlsx" />
+      <button class="btn btn-secondary" onclick="handleUpload()">Upload</button>
+    </div>
+  </div>
+
+
+    let rawFile = null;
+    async function handleUpload() {
+      const fileInput = document.getElementById('fileInput');
+      rawFile = fileInput.files[0];
+      if (!rawFile) return;
+      alert("ไฟล์ถูกเลือกแล้ว: " + rawFile.name);
+    }
+  </script>
+
+<script>
+  let rawFile = null;
+  async function handleUpload() {
+    const fileInput = document.getElementById('fileInput');
+    rawFile = fileInput.files[0];
+    if (!rawFile) return;
+
+    const formData = new FormData();
+    formData.append("rawFile", rawFile);
+
+    const response = await fetch("https://ptg-output2-web.onrender.com/extract_months_categories", {
+      method: "POST",
+      body: formData
+    });
+
+    if (!response.ok) {
+      alert("Error contacting backend");
+      return;
+    }
+
+    const data = await response.json();
+    console.log("✅ หมวดหมู่2:", data.category2);
+    alert("📂 ไฟล์ถูกอัปโหลด และหมวดหมู่ถูกโหลดแล้ว");
+  }
+</script>
+
+</body>
+</html>
