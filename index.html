@@ -3,138 +3,147 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Output2 Generator</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet"/>
   <style>
     body {
-      background-color: #e6ffe6; /* เขียวอ่อนแบบสดใส */
-      font-family: Arial, sans-serif;
+      background-color: #e6f9e6;
       padding: 20px;
     }
-    h1 {
-      color: #1b5e20;
-    }
-    label {
-      font-weight: bold;
-    }
-    select, input[type="file"], button {
-      margin-top: 5px;
-      margin-bottom: 15px;
-      padding: 5px;
+    .select2-container--default .select2-selection--multiple {
+      border: 1px solid #ced4da;
+      border-radius: 0.375rem;
     }
     button {
-      background-color: #4CAF50;
-      color: white;
-      border: none;
-      cursor: pointer;
-      padding: 8px 16px;
-      border-radius: 4px;
-    }
-    button:hover {
-      background-color: #45a049;
+      margin-top: 10px;
     }
   </style>
 </head>
 <body>
-  <h1>Output2 Generator</h1>
-  <form id="uploadForm">
-    <label>อัปโหลดไฟล์ Excel (.xlsx)</label><br />
-    <input type="file" name="rawFile" id="rawFile" required /><br />
+  <div class="container">
+    <h2 class="mb-4">📊 Output2 Generator</h2>
 
-    <label>เลือกหมวดหมู่ 2:</label><br />
-    <select multiple id="category2"></select>
-    <button type="button" onclick="addAll('category2')">Add All</button><br />
+    <div class="mb-3">
+      <label for="fileInput" class="form-label fw-bold">อัปโหลดไฟล์ Excel (.xlsx)</label>
+      <input class="form-control" type="file" id="fileInput" accept=".xlsx"/>
+      <button class="btn btn-success mt-2" id="uploadBtn">Upload</button>
+    </div>
 
-    <label>เลือกหมวดหมู่ 3:</label><br />
-    <select multiple id="category3"></select>
-    <button type="button" onclick="addAll('category3')">Add All</button><br />
+    <div id="selectors" style="display:none;">
+      <div class="mb-3">
+        <label class="form-label">เดือน (Month):</label>
+        <select class="form-select" id="monthSelect"></select>
+      </div>
 
-    <label>เลือกเดือน:</label><br />
-    <select multiple id="months"></select><br />
+      <div class="mb-3">
+        <label class="form-label">หมวดหมู่ 2:</label>
+        <select class="form-select" id="category2Select" multiple></select>
+        <button class="btn btn-outline-primary btn-sm" id="addAllCategory2">Add All</button>
+      </div>
 
-    <button type="submit">ดาวน์โหลด Output2</button>
-  </form>
+      <div class="mb-3">
+        <label class="form-label">หมวดหมู่ 3:</label>
+        <select class="form-select" id="category3Select" multiple></select>
+        <button class="btn btn-outline-primary btn-sm" id="addAllCategory3">Add All</button>
+      </div>
+
+      <button class="btn btn-success" id="downloadBtn">📥 ดาวน์โหลด Output2</button>
+    </div>
+  </div>
 
   <script>
-    const backendBaseURL = "https://output2-generator-production.up.railway.app";
+    const backendURL = "https://output2-generator-production.up.railway.app";
 
-    document.getElementById("rawFile").addEventListener("change", async function () {
-      const file = this.files[0];
-      if (!file) return;
+    $("#uploadBtn").click(function () {
+      const file = $("#fileInput")[0].files[0];
+      if (!file) {
+        alert("กรุณาเลือกไฟล์ก่อน");
+        return;
+      }
 
       const formData = new FormData();
       formData.append("rawFile", file);
 
-      try {
-        const res = await fetch(`${backendBaseURL}/extract_months_categories`, {
-          method: "POST",
-          body: formData
-        });
-        const data = await res.json();
-        if (data.error) throw new Error(data.error);
+      fetch(backendURL + "/extract_months_categories", {
+        method: "POST",
+        body: formData,
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.error) {
+            alert("เกิดข้อผิดพลาด: " + data.error);
+            return;
+          }
 
-        populateSelect("category2", data.category2);
-        populateSelect("category3", data.category3);
-        populateSelect("months", data.months);
-      } catch (err) {
-        alert("❌ เกิดข้อผิดพลาด: " + err.message);
-      }
+          $("#selectors").show();
+
+          const monthSelect = $("#monthSelect").empty();
+          data.months.forEach((m) => {
+            monthSelect.append(`<option value="${m}">${m}</option>`);
+          });
+
+          const cat2 = $("#category2Select").empty();
+          data.category2.forEach((c) => {
+            cat2.append(`<option value="${c}">${c}</option>`);
+          });
+
+          const cat3 = $("#category3Select").empty();
+          data.category3.forEach((c) => {
+            cat3.append(`<option value="${c}">${c}</option>`);
+          });
+
+          $("#category2Select, #category3Select").select2();
+        })
+        .catch((err) => {
+          alert("❌ เกิดข้อผิดพลาดในการติดต่อเซิร์ฟเวอร์");
+        });
     });
 
-    function populateSelect(id, values) {
-      const select = document.getElementById(id);
-      select.innerHTML = "";
-      values.forEach(val => {
-        const opt = document.createElement("option");
-        opt.value = val;
-        opt.textContent = val;
-        select.appendChild(opt);
-      });
-    }
+    $("#addAllCategory2").click(() => {
+      $("#category2Select option").prop("selected", true);
+      $("#category2Select").trigger("change");
+    });
 
-    function addAll(selectId) {
-      const select = document.getElementById(selectId);
-      for (let i = 0; i < select.options.length; i++) {
-        select.options[i].selected = true;
-      }
-    }
+    $("#addAllCategory3").click(() => {
+      $("#category3Select option").prop("selected", true);
+      $("#category3Select").trigger("change");
+    });
 
-    document.getElementById("uploadForm").addEventListener("submit", async function (e) {
-      e.preventDefault();
-
-      const file = document.getElementById("rawFile").files[0];
-      if (!file) return alert("กรุณาเลือกไฟล์");
+    $("#downloadBtn").click(function () {
+      const file = $("#fileInput")[0].files[0];
+      const month = $("#monthSelect").val();
+      const cat2 = $("#category2Select").val();
+      const cat3 = $("#category3Select").val();
 
       const formData = new FormData();
       formData.append("rawFile", file);
-      formData.append("category2", getSelectedValues("category2"));
-      formData.append("category3", getSelectedValues("category3"));
-      formData.append("months", getSelectedValues("months"));
+      formData.append("month", month);
+      formData.append("category2", JSON.stringify(cat2));
+      formData.append("category3", JSON.stringify(cat3));
 
-      try {
-        const res = await fetch(`${backendBaseURL}/generate_output2`, {
-          method: "POST",
-          body: formData
+      fetch(backendURL + "/generate_output2", {
+        method: "POST",
+        body: formData,
+      })
+        .then((res) => {
+          if (!res.ok) throw new Error("Download failed");
+          return res.blob();
+        })
+        .then((blob) => {
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = "Output2.xlsx";
+          a.click();
+        })
+        .catch(() => {
+          alert("❌ ไม่สามารถดาวน์โหลดไฟล์ได้");
         });
-        if (!res.ok) throw new Error("ไม่สามารถดาวน์โหลดไฟล์ได้");
-
-        const blob = await res.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = "Output2.xlsx";
-        a.click();
-        window.URL.revokeObjectURL(url);
-      } catch (err) {
-        alert("❌ ไม่สามารถดาวน์โหลดไฟล์ได้
-
-" + err.message);
-      }
     });
-
-    function getSelectedValues(selectId) {
-      const select = document.getElementById(selectId);
-      return Array.from(select.selectedOptions).map(opt => opt.value);
-    }
   </script>
 </body>
 </html>
