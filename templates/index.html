@@ -107,6 +107,13 @@
         method: "POST",
         body: formData
       });
+
+      if (!res.ok || !res.headers.get("Content-Disposition")) {
+        const errorText = await res.text();
+        alert("❌ ไม่สามารถดาวน์โหลดไฟล์ได้\n" + errorText);
+        return;
+      }
+
       const blob = await res.blob();
       const link = document.createElement('a');
       link.href = window.URL.createObjectURL(blob);
