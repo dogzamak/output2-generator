@@ -1,112 +1,76 @@
+
 <!DOCTYPE html>
 <html lang="th">
 <head>
   <meta charset="UTF-8" />
   <title>Output2 Generator</title>
-  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-  <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-  <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-  <style>
-    body { font-family: sans-serif; margin: 2rem; }
-    label { display: block; margin-top: 1rem; }
-    .select2 { width: 100% !important; }
-  </style>
 </head>
 <body>
-  <h2>Output2 Generator</h2>
-  <label>Upload Raw Data (.xlsx):</label>
-  <input type="file" id="rawFile" accept=".xlsx" />
-
-  <label>เลือกเดือน + ปี:</label>
-  <div id="monthsContainer"></div>
-
-  <label>เลือกหมวดหมู่2:</label>
-  <select id="category2" multiple></select>
-
-  <label>เลือกหมวดหมู่3:</label>
-  <select id="category3" multiple></select>
-
-  <label>แสดงผลลัพธ์:</label>
-  <input type="radio" name="filterType" value="top5" checked /> Top 5 Grand Total
-  <input type="radio" name="filterType" value="all" /> แสดงทั้งหมด
-
-  <br /><br />
-  <button onclick="generateOutput()">Generate Output2</button>
-  <div id="downloadLink"></div>
-
-<script>
-  let months = [];
-
-  $("#category2, #category3").select2({ placeholder: "เลือกหรือค้นหา" });
-
-  $("#rawFile").on("change", function () {
-    const file = this.files[0];
-    if (!file) return;
-
-    const formData = new FormData();
-    formData.append("rawFile", file);
-
-    $.post({
-      url: "/extract_months_categories",
-      data: formData,
-      processData: false,
-      contentType: false,
-      success: function (res) {
-        months = res.months;
-        $("#monthsContainer").empty();
-        months.forEach(m => {
-          const id = "month_" + m.replace(/\s/g, '_');
-          $("#monthsContainer").append(
-            `<label><input type='checkbox' name='months' value='${m}' id='${id}' checked /> ${m}</label>`
-          );
-        });
-
-        $("#category2").empty();
-        res.category2.forEach(c => {
-          $("#category2").append(`<option value="${c}">${c}</option>`);
-        });
-
-        $("#category3").empty();
-        res.category3.forEach(c => {
-          $("#category3").append(`<option value="${c}">${c}</option>`);
-        });
-
-        $("#category2").trigger("change");
-        $("#category3").trigger("change");
-      }
-    });
-  });
-
-  function generateOutput() {
-    const file = $("#rawFile")[0].files[0];
-    if (!file) return alert("กรุณาอัปโหลดไฟล์ Raw Data");
-
-    const formData = new FormData();
-    formData.append("rawFile", file);
-    $("input[name='months']:checked").each(function () {
-      formData.append("months[]", $(this).val());
-    });
-    $("#category2").val().forEach(v => formData.append("category2[]", v));
-    $("#category3").val().forEach(v => formData.append("category3[]", v));
-
-    const filterType = $("input[name='filterType']:checked").val();
-    formData.append("filterType", filterType);
-
-    fetch("/generate_output2", {
-      method: "POST",
-      body: formData
-    })
-      .then(res => res.blob())
-      .then(blob => {
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = "Output2.xlsx";
-        document.getElementById("downloadLink").innerHTML = "";
-        document.getElementById("downloadLink").appendChild(a);
-        a.textContent = "📥 ดาวน์โหลด Output2.xlsx";
+  <h2>อัปโหลดไฟล์ Excel (Raw Data)</h2>
+  <input type="file" id="fileInput" accept=".xlsx" />
+  <div id="filters" style="margin-top: 20px;"></div>
+  <div id="actions" style="margin-top: 20px; display:none;">
+    <label><input type="radio" name="filterType" value="top5" checked> แสดงเฉพาะ Top 5</label>
+    <label><input type="radio" name="filterType" value="all"> แสดงทั้งหมด</label>
+    <br><br>
+    <button onclick="generateOutput2()">Generate Output2</button>
+  </div>
+  <script>
+    let rawFile;
+    document.getElementById('fileInput').addEventListener('change', async (e) => {
+      rawFile = e.target.files[0];
+      const formData = new FormData();
+      formData.append('rawFile', rawFile);
+      const res = await fetch('https://ptg-output2-web.onrender.com/extract_months_categories', {
+        method: 'POST',
+        body: formData
       });
-  }
-</script>
+      const data = await res.json();
+      const filters = document.getElementById('filters');
+      filters.innerHTML = '';
+
+      filters.innerHTML += '<h3>เลือกเดือน:</h3>';
+      data.months.forEach(m => {
+        filters.innerHTML += `<label><input type="checkbox" name="months" value="${m}"> ${m}</label><br>`;
+      });
+
+      filters.innerHTML += '<h3>หมวดหมู่2:</h3>';
+      filters.innerHTML += '<select id="category2" multiple>' +
+        data.category2.map(c => `<option value="${c}">${c}</option>`).join('') +
+        '</select>';
+
+      filters.innerHTML += '<h3>หมวดหมู่3:</h3>';
+      filters.innerHTML += '<select id="category3" multiple>' +
+        data.category3.map(c => `<option value="${c}">${c}</option>`).join('') +
+        '</select>';
+
+      document.getElementById('actions').style.display = 'block';
+    });
+
+    async function generateOutput2() {
+      const months = [...document.querySelectorAll('input[name="months"]:checked')].map(e => e.value);
+      const category2 = [...document.getElementById('category2').selectedOptions].map(o => o.value);
+      const category3 = [...document.getElementById('category3').selectedOptions].map(o => o.value);
+      const filterType = document.querySelector('input[name="filterType"]:checked').value;
+
+      const formData = new FormData();
+      formData.append('rawFile', rawFile);
+      months.forEach(m => formData.append('months[]', m));
+      category2.forEach(c => formData.append('category2[]', c));
+      category3.forEach(c => formData.append('category3[]', c));
+      formData.append('filterType', filterType);
+
+      const res = await fetch('https://ptg-output2-web.onrender.com/generate_output2', {
+        method: 'POST',
+        body: formData
+      });
+
+      const blob = await res.blob();
+      const link = document.createElement('a');
+      link.href = window.URL.createObjectURL(blob);
+      link.download = "Output2.xlsx";
+      link.click();
+    }
+  </script>
 </body>
 </html>
