@@ -3,6 +3,7 @@ from flask import Flask, request, send_file, jsonify
 import pandas as pd
 import io
 from datetime import datetime
+import os
 
 app = Flask(__name__)
 
@@ -85,5 +86,7 @@ def generate_output2():
 
     return send_file(output, as_attachment=True, download_name='Output2.xlsx', mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
+
 if __name__ == '__main__':
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
