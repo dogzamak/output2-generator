@@ -49,6 +49,8 @@
         <label class="form-label">หมวดหมู่ 3:</label>
         <select class="form-select" id="category3Select" multiple></select>
         <button class="btn btn-outline-primary btn-sm" id="addAllCategory3">Add All</button>
+        <textarea id="category3PasteArea" class="form-control mt-2" rows="3" placeholder="วางรายการหมวดหมู่3 จาก Excel..."></textarea>
+        <button class="btn btn-outline-success btn-sm mt-1" onclick="selectFromTextarea()">เลือกจากรายการที่วางไว้</button>
       </div>
 
       <div class="mb-3">
@@ -116,6 +118,17 @@
       $("#category3Select option").prop("selected", true);
       $("#category3Select").trigger("change");
     });
+
+    function selectFromTextarea() {
+      const input = document.getElementById("category3PasteArea").value;
+      const lines = input.split(/\r?\n|,|;/).map(line => line.trim()).filter(line => line !== "");
+      const select = document.getElementById("category3Select");
+
+      for (const option of select.options) {
+        option.selected = lines.includes(option.value);
+      }
+      $("#category3Select").trigger("change");
+    }
 
     $("#downloadBtn").click(function () {
       const file = $("#fileInput")[0].files[0];
