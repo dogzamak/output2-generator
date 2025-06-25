@@ -51,6 +51,8 @@
   <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
   <script>
     let rawFile = null;
+    const BACKEND = "https://output2-generator-production.up.railway.app";
+
     async function handleUpload() {
       const fileInput = document.getElementById("fileInput");
       rawFile = fileInput.files[0];
@@ -60,11 +62,15 @@
       }
       const formData = new FormData();
       formData.append("rawFile", rawFile);
-      const res = await fetch("https://output2-generator-production.up.railway.app/extract_months_categories", {
+      const res = await fetch(BACKEND + "/extract_months_categories", {
         method: "POST",
         body: formData
       });
       const data = await res.json();
+      if (data.error) {
+        alert("เกิดข้อผิดพลาด: " + data.error);
+        return;
+      }
       loadOptions("monthSelect", data.months);
       loadOptions("cat2Select", data.category2);
       loadOptions("cat3Select", data.category3);
@@ -103,7 +109,7 @@
       cat3.forEach(c => formData.append("category3[]", c));
       formData.append("filterType", type);
 
-      const res = await fetch("https://output2-generator-production.up.railway.app/generate_output2", {
+      const res = await fetch(BACKEND + "/generate_output2", {
         method: "POST",
         body: formData
       });
