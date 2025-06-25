@@ -1,11 +1,15 @@
 
-from flask import Flask, request, send_file, jsonify
+from flask import Flask, request, send_file, jsonify, render_template
 import pandas as pd
 import io
 from datetime import datetime
 import os
 
 app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return render_template('index.html')
 
 @app.route('/extract_months_categories', methods=['POST'])
 def extract_months_categories():
