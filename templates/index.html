@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Output2 Generator</title>
+  <style>
+    body { background-color: #eaf4ec; font-family: 'Segoe UI', sans-serif; padding: 20px; color: #333; }
+    h1 { color: #2a7c46; }
+    label { font-weight: bold; margin-top: 10px; display: block; }
+    select, input[type="file"] { width: 100%; padding: 8px; margin-top: 4px; }
+    .section { margin-bottom: 20px; }
+    .select-wrapper { display: flex; gap: 10px; align-items: center; }
+    .select-wrapper button { padding: 5px 10px; cursor: pointer; }
+    button {
+      background-color: #4CAF50; color: white; padding: 10px 20px;
+      border: none; border-radius: 5px; cursor: pointer; margin-top: 10px;
+    }
+    button:hover { background-color: #45a049; }
+    .progress-container { display: none; margin-top: 10px; }
+    .progress-bar { width: 0%; height: 20px; background-color: #4CAF50; }
+    #version { font-size: 12px; color: gray; margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <h1>Output2 Generator</h1>
+  <div id="version">Version: 2025-06-26 17:45 (GMT+7)</div>
+
+  <div class="section">
+    <label>อัปโหลดไฟล์ Raw Data (.xlsx)</label>
+    <input type="file" id="rawFile" accept=".xlsx"/>
+    <button onclick="uploadFile()">📤 อัปโหลดไฟล์</button>
+    <div class="progress-container"><div class="progress-bar" id="uploadBar"></div></div>
+    <div id="progressText"></div>
+  </div>
+
+  <div class="section">
+    <label>เลือกเดือน:</label>
+    <select id="months" multiple></select>
+  </div>
+  <div class="section">
+    <label>หมวดหมู่2:</label>
+    <div class="select-wrapper">
+      <select id="category2" multiple></select>
+      <button onclick="addAll('category2')">เลือกทั้งหมด</button>
+    </div>
+  </div>
+  <div class="section">
+    <label>หมวดหมู่3:</label>
+    <div class="select-wrapper">
+      <select id="category3" multiple></select>
+      <button onclick="addAll('category3')">เลือกทั้งหมด</button>
+    </div>
+  </div>
+  <div class="section">
+    <label>สถานะ:</label>
+    <select id="status" multiple></select>
+  </div>
+  <div class="section">
+    <label>สถานะ Process:</label>
+    <select id="processStatus" multiple></select>
+  </div>
+  <div class="section">
+    <label>ตัวเลือกแสดงผล:</label>
+    <label><input type="radio" name="filterType" value="top5" checked /> Top 5</label>
+    <label><input type="radio" name="filterType" value="all" /> แสดงทั้งหมด</label>
+  </div>
+
+  <button onclick="generateOutput()">📥 ดาวน์โหลด Output2</button>
+
+  <script>
+    const backendURL = "https://output2-generator-production.up.railway.app";
+
+    function uploadFile() {
+      const fileInput = document.getElementById("rawFile");
+      const file = fileInput.files[0];
+      if (!file) {
+        alert("กรุณาเลือกไฟล์");
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append("rawFile", file);
+
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", backendURL + "/extract_months_categories", true);
+      xhr.upload.onprogress = function(e) {
+        if (e.lengthComputable) {
+          const percent = Math.round((e.loaded / e.total) * 100);
+          document.querySelector(".progress-container").style.display = "block";
+          document.getElementById("uploadBar").style.width = percent + "%";
+          document.getElementById("progressText").innerText = "กำลังอัปโหลด... " + percent + "%";
+        }
+      };
+      xhr.onload = function() {
+        if (xhr.status === 200) {
+          const data = JSON.parse(xhr.responseText);
+          populate("months", data.months);
+          populate("category2", data.category2);
+          populate("category3", data.category3);
+          populate("status", data.status);
+          populate("processStatus", data.process_status);
+          document.getElementById("progressText").innerText = "อัปโหลดสำเร็จ!";
+        } else {
+          alert("❌ เกิดข้อผิดพลาดจากเซิร์ฟเวอร์");
+        }
+      };
+      xhr.onerror = function() {
+        alert("❌ ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้");
+      };
+      xhr.send(formData);
+    }
+
+    function populate(id, list) {
+      const select = document.getElementById(id);
+      select.innerHTML = "";
+      list.forEach(val => {
+        const opt = document.createElement("option");
+        opt.value = val;
+        opt.text = val;
+        select.appendChild(opt);
+      });
+    }
+
+    function addAll(selectId) {
+      const select = document.getElementById(selectId);
+      for (let i = 0; i < select.options.length; i++) {
+        select.options[i].selected = true;
+      }
+    }
+
+    function generateOutput() {
+      const file = document.getElementById("rawFile").files[0];
+      const formData = new FormData();
+      formData.append("rawFile", file);
+      ["months", "category2", "category3", "status", "processStatus"].forEach(id => {
+        const options = document.getElementById(id).selectedOptions;
+        for (const opt of options) {
+          formData.append(id + "[]", opt.value);
+        }
+      });
+      const type = document.querySelector("input[name='filterType']:checked").value;
+      formData.append("filterType", type);
+
+      fetch(backendURL + "/generate_output2", {
+        method: "POST",
+        body: formData
+      })
+      .then(res => res.blob())
+      .then(blob => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "Output2.xlsx";
+        a.click();
+      });
+    }
+  </script>
+</body>
+</html>
