@@ -1,14 +1,15 @@
+
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 import pandas as pd
 import io
 
 app = Flask(__name__)
-CORS(app)  # เปิดใช้งาน CORS สำหรับทุก origin
+CORS(app, origins=["https://dogzamak.github.io"], supports_credentials=True)
 
 @app.route('/')
 def home():
-    return 'Backend is running with CORS enabled.'
+    return 'Backend is running with CORS enabled for https://dogzamak.github.io'
 
 @app.route('/upload_raw_data', methods=['POST'])
 def upload_raw_data():
@@ -20,7 +21,6 @@ def upload_raw_data():
 
     try:
         df = pd.read_excel(file)
-        # ตรวจสอบคอลัมน์เบื้องต้น
         cols = df.columns.tolist()
         return jsonify({'columns': cols})
     except Exception as e:
