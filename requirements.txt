@@ -4,3 +4,4 @@ pandas
 openpyxl
 gunicorn
 flask_cors
+uvicorn
