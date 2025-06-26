@@ -7,74 +7,163 @@
   <title>Output2 Generator</title>
   <style>
     body {
-      background-color: #f0faef;
+      background-color: #e3f9e5;
       font-family: Arial, sans-serif;
       padding: 20px;
+      max-width: 800px;
+      margin: auto;
     }
-    .error {
-      color: red;
-      margin-top: 10px;
-    }
+    h1 { color: #2c662d; }
+    label { font-weight: bold; display: block; margin-top: 15px; }
+    select, button { width: 100%; padding: 8px; margin-top: 5px; }
+    .checkbox-group, .radio-group { margin: 10px 0; }
+    .error { color: red; margin-top: 10px; }
+    .success { color: green; margin-top: 10px; }
+    .version { font-size: 0.9em; color: gray; text-align: right; margin-top: 20px; }
   </style>
 </head>
 <body>
   <h1>Output2 Generator</h1>
-  <p><strong>Version:</strong> 2025-06-26 (Robust error-handling)</p>
+  <p class="version">Version: 2025-06-26 23:55 (full feature)</p>
+
+  <label for="rawFile">📤 เลือกไฟล์ Raw Data (.xlsx)</label>
   <input type="file" id="rawFile" accept=".xlsx" />
-  <button onclick="uploadFile()">อัปโหลดไฟล์</button>
-  <p id="uploadStatus"></p>
-  <div class="error" id="errorMsg"></div>
+  <button onclick="uploadFile()">Upload</button>
+  <progress id="uploadProgress" value="0" max="100" style="width:100%; display:none;"></progress>
+
+  <label>📅 เลือกเดือน:</label>
+  <select id="months" multiple></select>
+  <button onclick="addAll('months')">Add All</button>
+
+  <label>📁 หมวดหมู่2:</label>
+  <select id="category2" multiple></select>
+  <button onclick="addAll('category2')">Add All</button>
+
+  <label>📂 หมวดหมู่3:</label>
+  <select id="category3" multiple></select>
+  <button onclick="addAll('category3')">Add All</button>
+
+  <label>📌 สถานะ:</label>
+  <select id="status" multiple></select>
+  <button onclick="addAll('status')">Add All</button>
+
+  <label>⚙️ สถานะ Process:</label>
+  <select id="processStatus" multiple></select>
+  <button onclick="addAll('processStatus')">Add All</button>
+
+  <div class="radio-group">
+    <label><input type="radio" name="mode" value="top5" checked /> Top 5</label>
+    <label><input type="radio" name="mode" value="all" /> แสดงทั้งหมด</label>
+  </div>
+
+  <button onclick="downloadOutput()">📥 ดาวน์โหลด Output2</button>
+  <div id="errorMsg" class="error"></div>
+  <div id="successMsg" class="success"></div>
 
   <script>
+    function addAll(selectId) {
+      const select = document.getElementById(selectId);
+      for (let i = 0; i < select.options.length; i++) {
+        select.options[i].selected = true;
+      }
+    }
+
     async function uploadFile() {
-      const errorBox = document.getElementById("errorMsg");
-      errorBox.textContent = "";
       const fileInput = document.getElementById("rawFile");
+      const progressBar = document.getElementById("uploadProgress");
       const file = fileInput.files[0];
+      const errorMsg = document.getElementById("errorMsg");
+      const successMsg = document.getElementById("successMsg");
+      errorMsg.textContent = "";
+      successMsg.textContent = "";
+
       if (!file) {
-        errorBox.textContent = "กรุณาไฟล์มาอัปโหลดก่อน";
+        errorMsg.textContent = "กรุณาเลือกไฟล์ก่อน";
         return;
       }
 
       const formData = new FormData();
       formData.append("file", file);
+      progressBar.style.display = "block";
 
       try {
-        const response = await fetch("https://output2-generator-production.up.railway.app/upload_raw_data", {
-          method: "POST",
-          body: formData
-        });
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", "https://output2-generator-production.up.railway.app/upload_raw_data", true);
 
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
+        xhr.upload.onprogress = function (event) {
+          if (event.lengthComputable) {
+            const percentComplete = (event.loaded / event.total) * 100;
+            progressBar.value = percentComplete;
+          }
+        };
 
-        const data = await response.json();
-        if (!data || typeof data !== "object") {
-          throw new Error("รูปแบบ Response ไม่ได้ในรูปแบบที่ต้องการ");
-        }
+        xhr.onload = function () {
+          if (xhr.status === 200) {
+            const data = JSON.parse(xhr.responseText);
+            populateSelect("months", data.months);
+            populateSelect("category2", data.category2Options);
+            populateSelect("category3", data.category3Options);
+            populateSelect("status", data.statusOptions);
+            populateSelect("processStatus", data.processStatusOptions);
+            successMsg.textContent = "✅ อัปโหลดไฟล์เรียบร้อยแล้ว";
+          } else {
+            errorMsg.textContent = "❌ อัปโหลดล้มเหลว: " + xhr.statusText;
+          }
+        };
 
-        populateSelect("months", data.months);
-        populateSelect("category2", data.category2Options);
-        populateSelect("category3", data.category3Options);
-        populateSelect("status", data.statusOptions);
-        populateSelect("processStatus", data.processStatusOptions);
-
-        document.getElementById("uploadStatus").textContent = "อัปโหลดแล้ว: 100%";
-      } catch (err) {
-        errorBox.textContent = `เกิดพลาด: ${err.message}`;
+        xhr.send(formData);
+      } catch (error) {
+        errorMsg.textContent = "❌ Error: " + error.message;
       }
     }
 
     function populateSelect(id, options) {
-      const errorBox = document.getElementById("errorMsg");
+      const select = document.getElementById(id);
+      select.innerHTML = "";
       if (!Array.isArray(options)) {
-        errorBox.textContent += `\nไม่มี options ที่มาให้ ${id}`;
+        document.getElementById("errorMsg").textContent += `
+[${id}] ไม่สามารถโหลดรายการได้`;
         return;
       }
+      options.forEach(option => {
+        const opt = document.createElement("option");
+        opt.value = option;
+        opt.textContent = option;
+        select.appendChild(opt);
+      });
+    }
 
-      console.log(`Populating ${id} with`, options);
-      // Placeholder: ตัวอย่างการ populate จริงจะเพิ่ม element <select> ตาม id
+    async function downloadOutput() {
+      const formData = new FormData();
+      formData.append("months", getSelected("months"));
+      formData.append("category2", getSelected("category2"));
+      formData.append("category3", getSelected("category3"));
+      formData.append("status", getSelected("status"));
+      formData.append("processStatus", getSelected("processStatus"));
+      formData.append("mode", document.querySelector("input[name='mode']:checked").value);
+
+      try {
+        const res = await fetch("https://output2-generator-production.up.railway.app/generate_output2", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!res.ok) throw new Error("การสร้างไฟล์ล้มเหลว");
+
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "Output2.xlsx";
+        a.click();
+      } catch (err) {
+        document.getElementById("errorMsg").textContent = "❌ ดาวน์โหลดล้มเหลว: " + err.message;
+      }
+    }
+
+    function getSelected(id) {
+      const select = document.getElementById(id);
+      return Array.from(select.selectedOptions).map(option => option.value);
     }
   </script>
 </body>
