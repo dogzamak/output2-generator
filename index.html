@@ -1,167 +1,170 @@
+
 <!DOCTYPE html>
-<html lang="th">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <title>Output2 Generator</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
   <style>
     body {
-      background-color: #e0f7e9;
-      font-family: 'Segoe UI', sans-serif;
-      padding: 20px;
+      background-color: #e6f4ea;
+      font-family: sans-serif;
+      padding: 2rem;
       max-width: 900px;
       margin: auto;
     }
-    h1 { color: #1b5e20; }
-    label { font-weight: bold; margin-top: 15px; display: block; }
-    select, input[type="file"], button { width: 100%; padding: 8px; margin-top: 5px; }
-    .select2-container { width: 100% !important; }
-    .flex-row { display: flex; gap: 10px; flex-wrap: wrap; }
-    .column { flex: 1; min-width: 200px; }
-    .version { text-align: right; color: gray; font-size: 0.85em; margin-top: 20px; }
+    label { font-weight: bold; margin-top: 1rem; display: block; }
+    select { width: 100%; }
+    button, input[type="file"] {
+      margin-top: 1rem;
+    }
+    .progress-bar {
+      margin-top: 1rem;
+      width: 100%;
+      height: 20px;
+      background-color: #d3d3d3;
+    }
+    .progress {
+      height: 100%;
+      background-color: #4caf50;
+      width: 0%;
+    }
   </style>
 </head>
 <body>
-  <h1>Output2 Generator</h1>
-  <div class="version">Version: 2025-06-26 18:35:44</div>
+  <h2>Output2 Generator</h2>
+  <p id="version"></p>
 
-  <label>📤 Upload Raw Data (.xlsx)</label>
-  <input type="file" id="rawFile" accept=".xlsx" />
+  <label for="fileInput">Upload Raw Data (.xlsx):</label>
+  <input type="file" id="fileInput" accept=".xlsx" />
+  <div class="progress-bar"><div class="progress" id="uploadProgress"></div></div>
   <button onclick="uploadFile()">Upload</button>
-  <progress id="uploadProgress" value="0" max="100" style="width:100%; display:none;"></progress>
 
-  <div class="flex-row">
-    <div class="column">
-      <label>📅 เลือกเดือน:</label>
-      <select id="months" multiple class="select2"></select>
-    </div>
-    <div class="column">
-      <label>📁 หมวดหมู่2: <button onclick="selectAll('category2')">Add All</button></label>
-      <select id="category2" multiple class="select2"></select>
-    </div>
-    <div class="column">
-      <label>📂 หมวดหมู่3: <button onclick="selectAll('category3')">Add All</button></label>
-      <select id="category3" multiple class="select2"></select>
-    </div>
+  <div id="filters" style="display:none;">
+    <label>เลือกเดือน:</label>
+    <select id="months" multiple></select>
+
+    <label>หมวดหมู่2:</label>
+    <select id="category2" multiple></select>
+    <button onclick="selectAll('category2')">Add All</button>
+
+    <label>หมวดหมู่3:</label>
+    <select id="category3" multiple></select>
+    <button onclick="selectAll('category3')">Add All</button>
+
+    <label>สถานะ:</label>
+    <select id="status" multiple></select>
+
+    <label>สถานะ Process:</label>
+    <select id="processStatus" multiple></select>
+
+    <label>เลือกวิธีแสดงผล:</label><br />
+    <input type="radio" name="top5Option" value="true" checked /> Top 5 <br />
+    <input type="radio" name="top5Option" value="false" /> แสดงทั้งหมด <br />
+
+    <button onclick="generateOutput2()">📥 ดาวน์โหลด Output2</button>
   </div>
 
-  <div class="flex-row">
-    <div class="column">
-      <label>📌 สถานะ:</label>
-      <select id="status" multiple class="select2"></select>
-    </div>
-    <div class="column">
-      <label>⚙️ สถานะ Process:</label>
-      <select id="processStatus" multiple class="select2"></select>
-    </div>
-  </div>
-
-  <div style="margin: 15px 0;">
-    <label><input type="radio" name="mode" value="top5" checked /> Top 5</label>
-    <label><input type="radio" name="mode" value="all" /> แสดงทั้งหมด</label>
-  </div>
-
-  <button onclick="downloadOutput()">📥 ดาวน์โหลด Output2</button>
-  <div id="errorMsg" style="color:red;"></div>
-  <div id="successMsg" style="color:green;"></div>
-
-  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
   <script>
-    function initializeSelect2() {
-      $('.select2').select2({ placeholder: "เลือกได้หลายรายการ", allowClear: true });
+    const backendURL = "https://output2-generator-production.up.railway.app";
+
+    document.getElementById("version").innerText = "Version: " + new Date().toLocaleString();
+
+    function selectAll(id) {
+      const $el = $(`#${id}`);
+      const values = [];
+      $el.find("option").each(function () {
+        values.push($(this).val());
+      });
+      $el.val(values).trigger("change");
+    }
+
+    function populate(id, items) {
+      const $select = $(`#${id}`);
+      $select.empty();
+      if (Array.isArray(items)) {
+        items.forEach(item => {
+          $select.append(new Option(item, item));
+        });
+      }
+      $select.select2({ placeholder: "เลือก..." });
     }
 
     function uploadFile() {
-      const file = document.getElementById("rawFile").files[0];
-      const errorMsg = document.getElementById("errorMsg");
-      const successMsg = document.getElementById("successMsg");
-      const progressBar = document.getElementById("uploadProgress");
-      errorMsg.textContent = "";
-      successMsg.textContent = "";
+      const file = document.getElementById("fileInput").files[0];
       if (!file) {
-        errorMsg.textContent = "กรุณาเลือกไฟล์ก่อน";
+        alert("กรุณาเลือกไฟล์ก่อน");
         return;
       }
       const formData = new FormData();
-      formData.append("rawFile", file);
+      formData.append("file", file); // FIXED key name here
 
-      progressBar.style.display = "block";
-
-      const xhr = new XMLHttpRequest();
-      xhr.open("POST", "https://output2-generator-production.up.railway.app/upload_raw_data", true);
-      xhr.upload.onprogress = (e) => {
-        if (e.lengthComputable) {
-          progressBar.value = (e.loaded / e.total) * 100;
-        }
-      };
-      xhr.onload = () => {
-        progressBar.style.display = "none";
-        if (xhr.status === 200) {
-          try {
-            const res = JSON.parse(xhr.responseText);
-            if (Array.isArray(res.months)) populate("months", res.months);
-            if (Array.isArray(res.category2)) populate("category2", res.category2);
-            if (Array.isArray(res.category3)) populate("category3", res.category3);
-            if (Array.isArray(res.status)) populate("status", res.status);
-            if (Array.isArray(res.processStatus)) populate("processStatus", res.processStatus);
-            successMsg.textContent = "✅ โหลดข้อมูลสำเร็จ";
-          } catch (err) {
-            errorMsg.textContent = "❌ Response format ผิด";
+      $.ajax({
+        url: backendURL + "/upload_raw_data",
+        method: "POST",
+        data: formData,
+        processData: false,
+        contentType: false,
+        xhr: function () {
+          const xhr = new window.XMLHttpRequest();
+          xhr.upload.addEventListener("progress", function (evt) {
+            if (evt.lengthComputable) {
+              const percent = (evt.loaded / evt.total) * 100;
+              $("#uploadProgress").css("width", percent + "%");
+            }
+          });
+          return xhr;
+        },
+        success: function (res) {
+          if (!res || !res.months) {
+            alert("Response ผิดโครงสร้าง หรือไม่มีข้อมูลเดือน");
+            return;
           }
-        } else {
-          errorMsg.textContent = "❌ อัปโหลดล้มเหลว: " + xhr.statusText;
+          populate("months", res.months);
+          populate("category2", res.category2Options);
+          populate("category3", res.category3Options);
+          populate("status", res.statusOptions);
+          populate("processStatus", res.processStatusOptions);
+          $("#filters").show();
+        },
+        error: function (xhr) {
+          alert("Upload ผิดพลาด: " + xhr.responseText);
         }
+      });
+    }
+
+    function generateOutput2() {
+      const body = {
+        months: $("#months").val(),
+        category2: $("#category2").val(),
+        category3: $("#category3").val(),
+        status: $("#status").val(),
+        processStatus: $("#processStatus").val(),
+        top5: $("input[name='top5Option']:checked").val()
       };
-      xhr.send(formData);
-    }
 
-    function populate(id, list) {
-      const select = document.getElementById(id);
-      select.innerHTML = "";
-      list.forEach((item) => {
-        const opt = document.createElement("option");
-        opt.value = item;
-        opt.textContent = item;
-        select.appendChild(opt);
-      });
-      $(`#$<built-in function id>`).trigger("change");
-    }
-
-    function selectAll(id) {
-      const select = document.getElementById(id);
-      const values = Array.from(select.options).map(o => o.value);
-      $(`#$<built-in function id>`).val(values).trigger("change");
-    }
-
-    async function downloadOutput() {
-      const formData = new FormData();
-      ["months", "category2", "category3", "status", "processStatus"].forEach(id => {
-        const val = $(`#$<built-in function id>`).val();
-        if (val) val.forEach(v => formData.append(id, v));
-      });
-      formData.append("mode", document.querySelector("input[name='mode']:checked").value);
-
-      try {
-        const res = await fetch("https://output2-generator-production.up.railway.app/generate_output2", {
-          method: "POST",
-          body: formData
-        });
-        if (!res.ok) throw new Error("ไม่สามารถดาวน์โหลดไฟล์ได้");
-
-        const blob = await res.blob();
+      fetch(backendURL + "/generate_output2", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      })
+      .then(response => {
+        if (!response.ok) throw new Error("การสร้าง Output2 ล้มเหลว");
+        return response.blob();
+      })
+      .then(blob => {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
         a.download = "Output2.xlsx";
+        document.body.appendChild(a);
         a.click();
-      } catch (err) {
-        document.getElementById("errorMsg").textContent = err.message;
-      }
+        a.remove();
+      })
+      .catch(error => alert(error.message));
     }
-
-    $(document).ready(initializeSelect2);
   </script>
 </body>
 </html>
