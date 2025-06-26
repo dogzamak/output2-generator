@@ -39,7 +39,10 @@
   <h1>Output2 Generator</h1>
   <div class="section">
     <label>อัปโหลดไฟล์ Excel (Raw data):</label>
+    
     <input type="file" id="rawFile" />
+    <button onclick="uploadFile()">📤 อัปโหลดไฟล์</button>
+    
   </div>
   <div class="section">
     <label>เลือกเดือน:</label>
@@ -75,14 +78,13 @@
 
     $(document).ready(() => {
       $("select").select2();
-      $("#rawFile").on("change", handleFileUpload);
+      // $("#rawFile").on("change", handleFileUpload);
     });
 
-    function handleFileUpload(e) {
-      const file = e.target.files[0];
+    function uploadFile() {
+      const file = document.getElementById('rawFile').files[0];
       if (!file) return;
-
-      const formData = new FormData();
+      
       formData.append("rawFile", file);
 
       fetch(backendURL + "/extract_months_categories", {
