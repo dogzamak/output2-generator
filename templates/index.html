@@ -86,7 +86,7 @@
             $('.select2').select2();
 
             $('#upload-btn').on('click', function () {
-                const file = $('#raw-file')[0].files[0];
+                const file = $('#rawFile')[0].files[0];
                 if (!file) return alert('กรุณาเลือกไฟล์');
 
                 const formData = new FormData();
