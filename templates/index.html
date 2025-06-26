@@ -1,13 +1,12 @@
+
 <!DOCTYPE html>
 <html lang="th">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Output2 Generator</title>
-  
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css"/>
-<script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
-
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css"/>
+  <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
   <style>
     body { background-color: #eaf4ec; font-family: 'Segoe UI', sans-serif; padding: 20px; color: #333; }
     h1 { color: #2a7c46; }
@@ -28,7 +27,7 @@
 </head>
 <body>
   <h1>Output2 Generator</h1>
-  <div id="version">Version: 2025-06-26 18:30 (with Choices.js)</div>
+  <div id="version">Version: 2025-06-26 19:00 (fix processStatus Choices.js)</div>
 
   <div class="section">
     <label>อัปโหลดไฟล์ Raw Data (.xlsx)</label>
@@ -71,111 +70,111 @@
   </div>
 
   <button onclick="generateOutput()">📥 ดาวน์โหลด Output2</button>
-  
-<script>
-  const backendURL = "https://output2-generator-production.up.railway.app";
-  const choicesInstances = {};
 
-  function initChoices(id) {
-    const element = document.getElementById(id);
-    if (choicesInstances[id]) {
-      choicesInstances[id].destroy();
-    }
-    choicesInstances[id] = new Choices(element, {
-      removeItemButton: true,
-      searchEnabled: true,
-      shouldSort: false
-    });
-  }
+  <script>
+    const backendURL = "https://output2-generator-production.up.railway.app";
+    const choicesInstances = {};
 
-  function uploadFile() {
-    const fileInput = document.getElementById("rawFile");
-    const file = fileInput.files[0];
-    if (!file) {
-      alert("กรุณาเลือกไฟล์");
-      return;
-    }
-
-    const formData = new FormData();
-    formData.append("rawFile", file);
-
-    const xhr = new XMLHttpRequest();
-    xhr.open("POST", backendURL + "/extract_months_categories", true);
-    xhr.upload.onprogress = function(e) {
-      if (e.lengthComputable) {
-        const percent = Math.round((e.loaded / e.total) * 100);
-        document.querySelector(".progress-container").style.display = "block";
-        document.getElementById("uploadBar").style.width = percent + "%";
-        document.getElementById("progressText").innerText = "กำลังอัปโหลด... " + percent + "%";
+    function initChoices(id) {
+      const element = document.getElementById(id);
+      if (choicesInstances[id]) {
+        choicesInstances[id].destroy();
       }
-    };
-    xhr.onload = function() {
-      if (xhr.status === 200) {
-        const data = JSON.parse(xhr.responseText);
-        populateAndInitChoices("months", data.months);
-        populateAndInitChoices("category2", data.category2);
-        populateAndInitChoices("category3", data.category3);
-        populateAndInitChoices("status", data.status);
-        populateAndInitChoices("processStatus", data.process_status);
-        document.getElementById("progressText").innerText = "อัปโหลดสำเร็จ!";
-      } else {
-        alert("❌ เกิดข้อผิดพลาดจากเซิร์ฟเวอร์");
-      }
-    };
-    xhr.onerror = function() {
-      alert("❌ ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้");
-    };
-    xhr.send(formData);
-  }
-
-  function populateAndInitChoices(id, list) {
-    const select = document.getElementById(id);
-    select.innerHTML = "";
-    list.forEach(val => {
-      const opt = document.createElement("option");
-      opt.value = val;
-      opt.text = val;
-      select.appendChild(opt);
-    });
-    initChoices(id);
-  }
-
-  function addAll(selectId) {
-    const instance = choicesInstances[selectId];
-    if (!instance) return;
-    const values = [];
-    for (let option of document.getElementById(selectId).options) {
-      values.push(option.value);
+      choicesInstances[id] = new Choices(element, {
+        removeItemButton: true,
+        searchEnabled: true,
+        shouldSort: false
+      });
     }
-    instance.setChoiceByValue(values);
-  }
 
-  function generateOutput() {
-    const file = document.getElementById("rawFile").files[0];
-    const formData = new FormData();
-    formData.append("rawFile", file);
-    ["months", "category2", "category3", "status", "processStatus"].forEach(id => {
+    function uploadFile() {
+      const fileInput = document.getElementById("rawFile");
+      const file = fileInput.files[0];
+      if (!file) {
+        alert("กรุณาเลือกไฟล์");
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append("rawFile", file);
+
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", backendURL + "/extract_months_categories", true);
+      xhr.upload.onprogress = function(e) {
+        if (e.lengthComputable) {
+          const percent = Math.round((e.loaded / e.total) * 100);
+          document.querySelector(".progress-container").style.display = "block";
+          document.getElementById("uploadBar").style.width = percent + "%";
+          document.getElementById("progressText").innerText = "กำลังอัปโหลด... " + percent + "%";
+        }
+      };
+      xhr.onload = function() {
+        if (xhr.status === 200) {
+          const data = JSON.parse(xhr.responseText);
+          populateAndInitChoices("months", data.months);
+          populateAndInitChoices("category2", data.category2);
+          populateAndInitChoices("category3", data.category3);
+          populateAndInitChoices("status", data.status);
+          populateAndInitChoices("processStatus", data.status_process);
+          document.getElementById("progressText").innerText = "อัปโหลดสำเร็จ!";
+        } else {
+          alert("❌ เกิดข้อผิดพลาดจากเซิร์ฟเวอร์");
+        }
+      };
+      xhr.onerror = function() {
+        alert("❌ ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้");
+      };
+      xhr.send(formData);
+    }
+
+    function populateAndInitChoices(id, list) {
       const select = document.getElementById(id);
-      const selected = [...select.selectedOptions].map(opt => opt.value);
-      selected.forEach(val => formData.append(id + "[]", val));
-    });
-    const type = document.querySelector("input[name='filterType']:checked").value;
-    formData.append("filterType", type);
+      select.innerHTML = "";
+      list.forEach(val => {
+        const opt = document.createElement("option");
+        opt.value = val;
+        opt.text = val;
+        select.appendChild(opt);
+      });
+      initChoices(id);
+    }
 
-    fetch(backendURL + "/generate_output2", {
-      method: "POST",
-      body: formData
-    })
-    .then(res => res.blob())
-    .then(blob => {
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "Output2.xlsx";
-      a.click();
-    });
-  }
-</script>
+    function addAll(selectId) {
+      const instance = choicesInstances[selectId];
+      if (!instance) return;
+      const values = [];
+      for (let option of document.getElementById(selectId).options) {
+        values.push(option.value);
+      }
+      instance.setChoiceByValue(values);
+    }
 
+    function generateOutput() {
+      const file = document.getElementById("rawFile").files[0];
+      const formData = new FormData();
+      formData.append("rawFile", file);
+      ["months", "category2", "category3", "status", "processStatus"].forEach(id => {
+        const options = document.getElementById(id).selectedOptions;
+        for (const opt of options) {
+          formData.append(id + "[]", opt.value);
+        }
+      });
+      const type = document.querySelector("input[name='filterType']:checked").value;
+      formData.append("filterType", type);
+
+      fetch(backendURL + "/generate_output2", {
+        method: "POST",
+        body: formData
+      })
+      .then(res => res.blob())
+      .then(blob => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "Output2.xlsx";
+        a.click();
+      });
+    }
+  </script>
 </body>
 </html>
