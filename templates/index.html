@@ -1,86 +1,178 @@
-
 <!DOCTYPE html>
-<html lang="th">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Output2 Generator</title>
     <style>
         body {
-            background-color: #edf7ec;
+            background-color: #eef8e9;
             font-family: Tahoma, sans-serif;
-            margin: 20px;
+            padding: 20px;
         }
         h1 {
-            color: darkgreen;
+            color: #116611;
         }
         .section {
             margin-top: 20px;
         }
-        .label {
+        label {
             font-weight: bold;
-            margin-bottom: 5px;
-            display: block;
         }
-        textarea, select, button {
+        select[multiple] {
             width: 100%;
-            padding: 10px;
-            margin-top: 5px;
-            font-size: 1em;
+            height: 100px;
         }
-        .upload-btn {
+        button, .btn {
             background-color: #4CAF50;
             color: white;
+            padding: 10px;
             border: none;
             cursor: pointer;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #3e8e41;
+        }
+        .hidden {
+            display: none;
         }
     </style>
 </head>
 <body>
-    <h1>Output2 Generator</h1>
-    <p><strong>Version:</strong> 2025-06-26 (UI restored)</p>
-    
-    <div class="section">
-        <label class="label">อัปโหลดไฟล์ Raw Data (.xlsx):</label>
-        <input type="file">
-        <button class="upload-btn">อัปโหลดไฟล์</button>
-    </div>
+    <h1>📊 Output2 Generator</h1>
+    <p><strong>Version:</strong> 2025-06-26 23:45 (UI fully restored ✅)</p>
 
     <div class="section">
-        <label class="label">เลือกเดือน:</label>
-        <textarea readonly>Jan 2025
-Feb 2025
-Mar 2025
-Apr 2025
-May 2025</textarea>
+        <label>อัปโหลดไฟล์ <strong>Raw Data (.xlsx)</strong>:</label><br>
+        <input type="file" id="fileInput" accept=".xlsx">
+        <button onclick="uploadFile()" class="btn">📤 อัปโหลดไฟล์</button>
+        <p id="uploadStatus"></p>
     </div>
 
-    <div class="section">
-        <label class="label">หมวดหมู่2:</label>
-        <textarea readonly>Asset Management System (AMS)
-HRIS
-HRMS
-Kissflow
-SAP Functional - การทำงานใน Module ต่างๆ
-Time Attendance (Snap Plus)</textarea>
+    <div id="filters" class="hidden">
+        <div class="section">
+            <label>เลือกเดือน:</label>
+            <button onclick="addAll('month')">Add All</button><br>
+            <select id="month" multiple></select>
+        </div>
+
+        <div class="section">
+            <label>หมวดหมู่2:</label>
+            <button onclick="addAll('cat2')">Add All</button><br>
+            <select id="cat2" multiple></select>
+        </div>
+
+        <div class="section">
+            <label>หมวดหมู่3:</label>
+            <button onclick="addAll('cat3')">Add All</button><br>
+            <select id="cat3" multiple></select>
+        </div>
+
+        <div class="section">
+            <label>สถานะ:</label>
+            <button onclick="addAll('status')">Add All</button><br>
+            <select id="status" multiple></select>
+        </div>
+
+        <div class="section">
+            <label>สถานะ Process:</label>
+            <button onclick="addAll('processStatus')">Add All</button><br>
+            <select id="processStatus" multiple></select>
+        </div>
+
+        <div class="section">
+            <label>เลือกประเภท:</label><br>
+            <input type="radio" name="topMode" value="top5" checked> Top 5<br>
+            <input type="radio" name="topMode" value="all"> แสดงทั้งหมด<br>
+        </div>
+
+        <div class="section">
+            <button onclick="downloadOutput()" class="btn">⬇ ดาวน์โหลด Output2</button>
+        </div>
     </div>
 
-    <div class="section">
-        <label class="label">หมวดหมู่3:</label>
-        <textarea readonly>ตัวอย่างรายการหมวดหมู่3</textarea>
-    </div>
+    <script>
+        const API_BASE = 'https://output2-generator-production.up.railway.app';
 
-    <div class="section">
-        <label class="label">สถานะ:</label>
-        <textarea readonly>Closed
-In Progress
-Opened</textarea>
-    </div>
+        function uploadFile() {
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+            if (!file) return alert('กรุณาเลือกไฟล์ก่อน');
 
-    <div class="section">
-        <label class="label">สถานะ Process:</label>
-        <textarea readonly>Opened
-Closed</textarea>
-    </div>
+            const formData = new FormData();
+            formData.append('file', file);
+
+            fetch(`${API_BASE}/upload_raw_data`, {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById('uploadStatus').innerText = 'อัปโหลดแล้ว: 100%';
+                populateSelect('month', data.months);
+                populateSelect('cat2', data.category2);
+                populateSelect('cat3', data.category3);
+                populateSelect('status', data.status);
+                populateSelect('processStatus', data.process_status);
+                document.getElementById('filters').classList.remove('hidden');
+            })
+            .catch(err => {
+                console.error(err);
+                alert('Upload error: ' + err.message);
+            });
+        }
+
+        function populateSelect(id, values) {
+            const select = document.getElementById(id);
+            select.innerHTML = '';
+            values.forEach(val => {
+                const option = document.createElement('option');
+                option.value = val;
+                option.text = val;
+                select.appendChild(option);
+            });
+        }
+
+        function addAll(id) {
+            const select = document.getElementById(id);
+            for (let i = 0; i < select.options.length; i++) {
+                select.options[i].selected = true;
+            }
+        }
+
+        function getSelectedValues(id) {
+            const select = document.getElementById(id);
+            return Array.from(select.selectedOptions).map(opt => opt.value);
+        }
+
+        function downloadOutput() {
+            const topMode = document.querySelector('input[name="topMode"]:checked').value;
+
+            const payload = {
+                months: getSelectedValues('month'),
+                category2: getSelectedValues('cat2'),
+                category3: getSelectedValues('cat3'),
+                status: getSelectedValues('status'),
+                process_status: getSelectedValues('processStatus'),
+                top_5: topMode === 'top5'
+            };
+
+            fetch(`${API_BASE}/generate_output2`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+            .then(response => response.blob())
+            .then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'Output2.xlsx';
+                a.click();
+                window.URL.revokeObjectURL(url);
+            })
+            .catch(err => alert('Error downloading Output2: ' + err.message));
+        }
+    </script>
 </body>
 </html>
