@@ -43,7 +43,6 @@ def generate_output2():
 
         pivot = df.pivot_table(index=["หมวดหมู่2", "หมวดหมู่3"],
                                columns="Month", aggfunc="size", fill_value=0).reset_index()
-
         pivot.columns.name = None
         pivot["Grand Total"] = pivot.loc[:, pivot.columns[2:]].sum(axis=1)
 
@@ -51,12 +50,7 @@ def generate_output2():
         pivot["DEBUG_Total_หมวดหมู่2"] = category2_total
 
         if show_top5_only:
-            top_rows = (
-                pivot.sort_values("Grand Total", ascending=False)
-                .groupby("หมวดหมู่2", group_keys=False)
-                .head(5)
-            )
-            pivot = top_rows.copy()
+            pivot = pivot.sort_values("Grand Total", ascending=False).head(5).copy()
 
         pivot = pivot.sort_values(by=["DEBUG_Total_หมวดหมู่2", "หมวดหมู่2", "Grand Total"],
                                   ascending=[False, True, False])
