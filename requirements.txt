@@ -1,7 +1,10 @@
 flask
 flask-cors
+flask_cors
 pandas
 openpyxl
 gunicorn
 uvicorn
-flask_cors
+fastapi
+python-multipart
+aiofiles
