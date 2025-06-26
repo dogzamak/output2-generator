@@ -1,45 +1,43 @@
 
-from flask import Flask, request, jsonify, send_file
+from flask import Flask, request, jsonify
 from flask_cors import CORS
 import pandas as pd
-import io
+from io import BytesIO
 
 app = Flask(__name__)
-CORS(app)  # Enable CORS for all routes
-
-@app.route("/")
-def index():
-    return "Output2 Generator Backend is running with CORS enabled."
+CORS(app, origins=["https://dogzamak.github.io"])
 
 @app.route("/upload_raw_data", methods=["POST"])
 def upload_raw_data():
-    if 'file' not in request.files:
-        return jsonify({"error": "No file part"}), 400
-    file = request.files['file']
-    if file.filename == '':
-        return jsonify({"error": "No selected file"}), 400
-
     try:
-        df = pd.read_excel(file, sheet_name=None)
-        return jsonify({"message": "File uploaded and read successfully", "sheets": list(df.keys())})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        file = request.files.get("file")
+        if not file:
+            return jsonify({"error": "No file uploaded"}), 400
 
-@app.route("/generate_output2", methods=["POST"])
-def generate_output2():
-    try:
-        # In practice, replace this with actual logic to generate the file
-        df = pd.DataFrame({
-            'ลำดับ': [1, 2],
-            'หมวดหมู่2': ['HRIS', 'WORKFLOW'],
-            'หมวดหมู่3': ['เข้าสู่ระบบไม่ได้', 'ตั้งค่าโปรแกรม'],
-            'Grand Total': [123, 99]
+        df = pd.read_excel(file, sheet_name="Data")
+        df.columns = df.columns.str.strip()
+
+        # แปลงวันที่
+        df["Created"] = pd.to_datetime(df["Created"], errors="coerce")
+        df = df.dropna(subset=["Created"])
+
+        # เดือน + ปี
+        df["Month"] = df["Created"].dt.strftime("%b %Y")
+        unique_months = sorted(df["Month"].unique().tolist(), key=lambda x: pd.to_datetime(x, format="%b %Y"))
+
+        # ตัวเลือก filter ต่าง ๆ
+        category2 = sorted(df["หมวดหมู่2"].dropna().astype(str).str.strip().str.title().unique().tolist())
+        category3 = sorted(df["หมวดหมู่3"].dropna().astype(str).str.strip().str.title().unique().tolist())
+        status = sorted(df["สถานะ"].dropna().astype(str).str.strip().unique().tolist()) if "สถานะ" in df.columns else []
+        status_process = sorted(df["สถานะ Process"].dropna().astype(str).str.strip().unique().tolist()) if "สถานะ Process" in df.columns else []
+
+        return jsonify({
+            "months": unique_months,
+            "category2Options": category2,
+            "category3Options": category3,
+            "statusOptions": status,
+            "processStatusOptions": status_process
         })
-        output = io.BytesIO()
-        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-            df.to_excel(writer, index=False, sheet_name='Output2')
-        output.seek(0)
-        return send_file(output, download_name="Output2.xlsx", as_attachment=True)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
