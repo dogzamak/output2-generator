@@ -90,7 +90,7 @@
                 if (!file) return alert('กรุณาเลือกไฟล์');
 
                 const formData = new FormData();
-                formData.append("rawfile", file);
+                formData.append("rawFile", file);
 
                 $.ajax({
                     url: "https://output2-generator-production.up.railway.app/upload_raw_data",
