@@ -12,11 +12,12 @@
             background-color: #e9f5e9;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             padding: 20px;
-            max-width: 900px;
+            max-width: 960px;
             margin: auto;
         }
         h1 {
             color: #006400;
+            margin-bottom: 20px;
         }
         label {
             font-weight: bold;
@@ -26,22 +27,30 @@
         select {
             width: 100%;
         }
-        .select2-selection__choice {
-            padding-right: 25px !important;
-            position: relative;
+        .select2-container--default .select2-selection--multiple {
+            border: 1px solid #ccc;
+            min-height: 40px;
+            background: white;
+            border-radius: 6px;
+            padding: 6px;
+        }
+        .select2-container--default .select2-selection--multiple .select2-selection__choice {
+            background-color: #4caf50;
+            border: none;
+            border-radius: 4px;
+            color: white;
+            padding: 2px 8px;
+            margin-top: 5px;
             font-size: 14px;
+            margin-right: 5px;
         }
         .select2-selection__choice__remove {
-            position: absolute;
-            right: 5px;
-            top: 3px;
-            color: #999;
+            color: #ffffff !important;
+            margin-left: 5px;
             font-weight: bold;
-            cursor: pointer;
-            font-size: 16px;
         }
         .select2-selection__choice__remove:hover {
-            color: red;
+            color: #ffcdd2 !important;
         }
         .button-group {
             margin-top: 20px;
@@ -64,12 +73,28 @@
             font-weight: bold;
             color: red;
         }
+        button, input[type="file"] {
+            margin-top: 5px;
+            margin-bottom: 10px;
+        }
+        .btn {
+            background-color: #388e3c;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .btn:hover {
+            background-color: #2e7d32;
+        }
     </style>
 </head>
 <body>
     <h1>Output2 Generator</h1>
-    <label for="fileInput">อัปโหลด Raw Data (Excel):</label>
+    <label for="fileInput">เลือกไฟล์ Raw Data (.xlsx):</label>
     <input type="file" id="fileInput" accept=".xlsx">
+    <button class="btn" onclick="uploadFile()">📤 อัปโหลด</button>
     <div class="progress-container"><div class="progress-bar" id="uploadProgress"></div></div>
     <div class="status-message" id="statusMsg"></div>
 
@@ -78,11 +103,11 @@
 
     <label for="category2">หมวดหมู่2:</label>
     <select id="category2" multiple="multiple"></select>
-    <button onclick="addAll('category2')">Add All</button>
+    <button class="btn" onclick="addAll('category2')">Add All</button>
 
     <label for="category3">หมวดหมู่3:</label>
     <select id="category3" multiple="multiple"></select>
-    <button onclick="addAll('category3')">Add All</button>
+    <button class="btn" onclick="addAll('category3')">Add All</button>
 
     <label for="status">สถานะ:</label>
     <select id="status" multiple="multiple"></select>
@@ -95,7 +120,7 @@
     <input type="radio" name="topOption" value="all"> แสดงทั้งหมด
 
     <div class="button-group">
-        <button onclick="downloadOutput2()">ดาวน์โหลด Output2</button>
+        <button class="btn" onclick="downloadOutput2()">📥 ดาวน์โหลด Output2</button>
     </div>
 
     <script>
@@ -108,7 +133,6 @@
 
         function loadDropdowns(data) {
             const { months, category2, category3, status, status_process } = data;
-
             const sets = {
                 months: months || [],
                 category2: category2 || [],
@@ -116,7 +140,6 @@
                 status: status || [],
                 statusProcess: status_process || []
             };
-
             Object.keys(sets).forEach(key => {
                 const el = $(`#${key}`);
                 el.empty();
@@ -129,47 +152,47 @@
 
         $(document).ready(function() {
             $("#months, #category2, #category3, #status, #statusProcess").select2();
-
-            $("#fileInput").on("change", function() {
-                const file = this.files[0];
-                if (!file) return;
-
-                const formData = new FormData();
-                formData.append("file", file);
-
-                $(".progress-container").show();
-                $("#uploadProgress").css("width", "0%").text("0%");
-                $("#statusMsg").text("");
-
-                $.ajax({
-                    url: backendUrl + "/upload_raw_data",
-                    method: "POST",
-                    data: formData,
-                    contentType: false,
-                    processData: false,
-                    xhr: function() {
-                        const xhr = new window.XMLHttpRequest();
-                        xhr.upload.addEventListener("progress", function(evt) {
-                            if (evt.lengthComputable) {
-                                const percent = Math.round((evt.loaded / evt.total) * 100);
-                                $("#uploadProgress").css("width", percent + "%").text(percent + "%");
-                            }
-                        }, false);
-                        return xhr;
-                    },
-                    success: function(response) {
-                        if (response && typeof response === "object") {
-                            loadDropdowns(response);
-                        } else {
-                            $("#statusMsg").text("⚠️ ข้อมูลที่ได้รับไม่ถูกต้องจาก backend");
-                        }
-                    },
-                    error: function() {
-                        $("#statusMsg").text("❌ ไม่สามารถเชื่อมต่อ backend ได้");
-                    }
-                });
-            });
         });
+
+        function uploadFile() {
+            const file = document.getElementById("fileInput").files[0];
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append("file", file);
+
+            $(".progress-container").show();
+            $("#uploadProgress").css("width", "0%").text("0%");
+            $("#statusMsg").text("");
+
+            $.ajax({
+                url: backendUrl + "/upload_raw_data",
+                method: "POST",
+                data: formData,
+                contentType: false,
+                processData: false,
+                xhr: function() {
+                    const xhr = new window.XMLHttpRequest();
+                    xhr.upload.addEventListener("progress", function(evt) {
+                        if (evt.lengthComputable) {
+                            const percent = Math.round((evt.loaded / evt.total) * 100);
+                            $("#uploadProgress").css("width", percent + "%").text(percent + "%");
+                        }
+                    }, false);
+                    return xhr;
+                },
+                success: function(response) {
+                    if (response && typeof response === "object") {
+                        loadDropdowns(response);
+                    } else {
+                        $("#statusMsg").text("⚠️ ข้อมูลที่ได้รับไม่ถูกต้องจาก backend");
+                    }
+                },
+                error: function() {
+                    $("#statusMsg").text("❌ ไม่สามารถเชื่อมต่อ backend ได้");
+                }
+            });
+        }
 
         function downloadOutput2() {
             const payload = {
