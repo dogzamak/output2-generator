@@ -37,18 +37,11 @@
 </head>
 <body>
   <h1>Output2 Generator</h1>
-  <p style="font-size: 12px; color: gray;">Version: 2025-06-26 04:23 (GMT+7)</p>
   <div class="section">
     <label>อัปโหลดไฟล์ Excel (Raw data):</label>
     
     <input type="file" id="rawFile" />
     <button onclick="uploadFile()">📤 อัปโหลดไฟล์</button>
-<div id="uploadProgressContainer" style="display:none; margin-top:10px;">
-  <label>สถานะการอัปโหลด:</label>
-  <progress id="uploadProgress" value="0" max="100" style="width:100%;"></progress>
-  <span id="progressPercent">0%</span>
-</div>
-
     
   </div>
   <div class="section">
@@ -94,45 +87,7 @@
       
       formData.append("rawFile", file);
 
-      
-    const xhr = new XMLHttpRequest();
-    xhr.open("POST", backendURL + "/extract_months_categories", true);
-
-    xhr.upload.onprogress = function(e) {
-      if (e.lengthComputable) {
-        const percent = Math.round((e.loaded / e.total) * 100);
-        document.getElementById("uploadProgressContainer").style.display = "block";
-        document.getElementById("uploadProgress").value = percent;
-        document.getElementById("progressPercent").innerText = percent + "%";
-      }
-    };
-
-    xhr.onload = function() {
-      if (xhr.status === 200) {
-        const data = JSON.parse(xhr.responseText);
-        if (data.error) {
-          alert("❌ อัปโหลดไฟล์ไม่สำเร็จ: " + data.error);
-          return;
-        }
-        populateSelect("#months", data.months);
-        populateSelect("#categories2", data.category2);
-        populateSelect("#categories3", data.category3);
-        populateSelect("#status", data.status);
-        populateSelect("#processStatus", data.process_status);
-      } else {
-        alert("❌ อัปโหลดไฟล์ไม่สำเร็จ (" + xhr.status + ")");
-      }
-      document.getElementById("uploadProgressContainer").style.display = "none";
-    };
-
-    xhr.onerror = function() {
-      alert("❌ การเชื่อมต่อกับเซิร์ฟเวอร์ล้มเหลว");
-      document.getElementById("uploadProgressContainer").style.display = "none";
-    };
-
-    xhr.send(formData);
-    return;
-
+      fetch(backendURL + "/extract_months_categories", {
         method: "POST",
         body: formData,
       })
