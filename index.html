@@ -1,156 +1,86 @@
+
 <!DOCTYPE html>
 <html lang="th">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Output2 Generator</title>
     <style>
         body {
-            font-family: sans-serif;
-            background: #eff8ef;
-            padding: 20px;
+            background-color: #edf7ec;
+            font-family: Tahoma, sans-serif;
+            margin: 20px;
         }
         h1 {
-            color: #004d00;
+            color: darkgreen;
         }
         .section {
-            margin-bottom: 15px;
+            margin-top: 20px;
         }
-        textarea, select {
+        .label {
+            font-weight: bold;
+            margin-bottom: 5px;
+            display: block;
+        }
+        textarea, select, button {
             width: 100%;
-            min-height: 80px;
+            padding: 10px;
+            margin-top: 5px;
             font-size: 1em;
         }
-        button {
-            padding: 10px 15px;
+        .upload-btn {
             background-color: #4CAF50;
             color: white;
-            font-size: 1em;
             border: none;
-            border-radius: 4px;
+            cursor: pointer;
         }
     </style>
 </head>
 <body>
     <h1>Output2 Generator</h1>
-    <div><strong>Version:</strong> 2025-06-26 23.38 (CORS verified)</div>
+    <p><strong>Version:</strong> 2025-06-26 (UI restored)</p>
+    
     <div class="section">
-        <label><strong>อัปโหลดไฟล์ Raw Data (.xlsx):</strong></label><br>
-        <input type="file" id="rawFileInput">
-        <button onclick="uploadFile()">📥 อัปโหลดไฟล์</button>
-        <div id="uploadStatus"></div>
+        <label class="label">อัปโหลดไฟล์ Raw Data (.xlsx):</label>
+        <input type="file">
+        <button class="upload-btn">อัปโหลดไฟล์</button>
     </div>
 
     <div class="section">
-        <label><strong>เลือกเดือน:</strong></label><br>
-        <select id="monthSelect" multiple></select>
-    </div>
-    <div class="section">
-        <label><strong>หมวดหมู่2:</strong></label><br>
-        <select id="cat2Select" multiple></select>
-    </div>
-    <div class="section">
-        <label><strong>หมวดหมู่3:</strong></label><br>
-        <select id="cat3Select" multiple></select>
-    </div>
-    <div class="section">
-        <label><strong>สถานะ:</strong></label><br>
-        <select id="statusSelect" multiple></select>
-    </div>
-    <div class="section">
-        <label><strong>สถานะ Process:</strong></label><br>
-        <select id="processStatusSelect" multiple></select>
+        <label class="label">เลือกเดือน:</label>
+        <textarea readonly>Jan 2025
+Feb 2025
+Mar 2025
+Apr 2025
+May 2025</textarea>
     </div>
 
     <div class="section">
-        <label><input type="checkbox" id="top5Checkbox"> แสดงเฉพาะ Top 5</label>
+        <label class="label">หมวดหมู่2:</label>
+        <textarea readonly>Asset Management System (AMS)
+HRIS
+HRMS
+Kissflow
+SAP Functional - การทำงานใน Module ต่างๆ
+Time Attendance (Snap Plus)</textarea>
     </div>
 
     <div class="section">
-        <button onclick="generateOutput2()">📊 ดาวน์โหลด Output2</button>
+        <label class="label">หมวดหมู่3:</label>
+        <textarea readonly>ตัวอย่างรายการหมวดหมู่3</textarea>
     </div>
 
-    <script>
-        const apiBase = "https://output2-generator-production.up.railway.app";
+    <div class="section">
+        <label class="label">สถานะ:</label>
+        <textarea readonly>Closed
+In Progress
+Opened</textarea>
+    </div>
 
-        function uploadFile() {
-            const fileInput = document.getElementById("rawFileInput");
-            const file = fileInput.files[0];
-            const formData = new FormData();
-            formData.append("file", file);
-            fetch(`${apiBase}/upload_raw_data`, {
-                method: "POST",
-                body: formData,
-            })
-            .then(res => res.json())
-            .then(data => {
-                document.getElementById("uploadStatus").innerText = "อัปโหลดแล้ว: 100%";
-                populateSelect("monthSelect", data.months);
-                populateSelect("cat2Select", data.category2);
-                populateSelect("cat3Select", data.category3);
-                populateSelect("statusSelect", data.status);
-                populateSelect("processStatusSelect", data.processStatus);
-            })
-            .catch(err => {
-                console.error("Upload error", err);
-                alert("Upload failed");
-            });
-        }
-
-        function populateSelect(id, values) {
-            const sel = document.getElementById(id);
-            sel.innerHTML = "";
-            values.forEach(val => {
-                const opt = document.createElement("option");
-                opt.value = val;
-                opt.innerText = val;
-                sel.appendChild(opt);
-            });
-        }
-
-        function generateOutput2() {
-            const months = getSelectValues("monthSelect");
-            const cat2 = getSelectValues("cat2Select");
-            const cat3 = getSelectValues("cat3Select");
-            const status = getSelectValues("statusSelect");
-            const process = getSelectValues("processStatusSelect");
-            const top5 = document.getElementById("top5Checkbox").checked;
-
-            const payload = {
-                months,
-                category2: cat2,
-                category3: cat3,
-                status,
-                process_status: process,
-                top5
-            };
-
-            fetch(`${apiBase}/generate_output2`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify(payload)
-            })
-            .then(res => res.blob())
-            .then(blob => {
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement("a");
-                a.href = url;
-                a.download = "Output2.xlsx";
-                document.body.appendChild(a);
-                a.click();
-                a.remove();
-            })
-            .catch(err => {
-                console.error("Output2 error", err);
-                alert("ไม่สามารถสร้าง Output2 ได้");
-            });
-        }
-
-        function getSelectValues(id) {
-            const sel = document.getElementById(id);
-            return Array.from(sel.selectedOptions).map(opt => opt.value);
-        }
-    </script>
+    <div class="section">
+        <label class="label">สถานะ Process:</label>
+        <textarea readonly>Opened
+Closed</textarea>
+    </div>
 </body>
 </html>
