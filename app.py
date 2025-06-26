@@ -1,111 +1,111 @@
 
-from flask import Flask, request, jsonify, send_file
-from flask_cors import CORS
+from fastapi import FastAPI, UploadFile, File, Form
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse, StreamingResponse
 import pandas as pd
-from io import BytesIO
-import datetime
+import io
 
-app = Flask(__name__)
-CORS(app, origins=["https://dogzamak.github.io"])
+app = FastAPI()
 
-@app.route("/")
-def index():
-    return "✅ Output2 Backend API is running."
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-@app.route("/upload_raw_data", methods=["POST"])
-def upload_raw_data():
+@app.post("/upload_raw_data")
+async def upload_raw_data(rawFile: UploadFile = File(...)):
     try:
-        file = request.files.get("file")
-        if not file:
-            return jsonify({"error": "No file uploaded"}), 400
+        contents = await rawFile.read()
+        df = pd.read_excel(io.BytesIO(contents), sheet_name="Data")
 
-        df = pd.read_excel(file, sheet_name="Data")
-        df.columns = df.columns.str.strip()
-        df["Created"] = pd.to_datetime(df["Created"], errors="coerce")
-        df = df.dropna(subset=["Created"])
+        category2 = sorted(df["หมวดหมู่2"].dropna().astype(str).str.strip().unique().tolist())
+        category3 = sorted(df["หมวดหมู่3"].dropna().astype(str).str.strip().unique().tolist())
+        status = sorted(df["สถานะ"].dropna().astype(str).str.strip().unique().tolist())
+        status_process = sorted(df["สถานะ Process"].dropna().astype(str).str.strip().unique().tolist())
 
-        df["Month"] = df["Created"].dt.strftime("%b %Y")
-        unique_months = sorted(df["Month"].unique().tolist(), key=lambda x: pd.to_datetime(x, format="%b %Y"))
-
-        category2 = sorted(df["หมวดหมู่2"].dropna().astype(str).str.strip().str.title().unique().tolist())
-        category3 = sorted(df["หมวดหมู่3"].dropna().astype(str).str.strip().str.title().unique().tolist())
-        status = sorted(df["สถานะ"].dropna().astype(str).str.strip().unique().tolist()) if "สถานะ" in df.columns else []
-        process_status = sorted(df["สถานะ Process"].dropna().astype(str).str.strip().unique().tolist()) if "สถานะ Process" in df.columns else []
-
-        return jsonify({
-            "months": unique_months,
-            "category2Options": category2,
-            "category3Options": category3,
-            "statusOptions": status,
-            "processStatusOptions": process_status
+        return JSONResponse(content={
+            "category2": category2,
+            "category3": category3,
+            "status": status,
+            "status_process": status_process
         })
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return JSONResponse(content={"error": str(e)}, status_code=400)
 
-@app.route("/generate_output2", methods=["POST"])
-def generate_output2():
+
+@app.post("/generate_output2")
+async def generate_output2(
+    rawFile: UploadFile = File(...),
+    months: str = Form(...),
+    category2: str = Form(...),
+    category3: str = Form(...),
+    status: str = Form(...),
+    status_process: str = Form(...),
+    top5: bool = Form(...),
+):
     try:
-        file = request.files.get("file")
-        if not file:
-            return jsonify({"error": "No file uploaded"}), 400
+        contents = await rawFile.read()
+        df = pd.read_excel(io.BytesIO(contents), sheet_name="Data")
 
-        selected_months = request.form.getlist("months[]")
-        selected_cat2 = [c.lower() for c in request.form.getlist("category2[]")]
-        selected_cat3 = [c.lower() for c in request.form.getlist("category3[]")]
-        selected_status = request.form.getlist("status[]")
-        selected_process = request.form.getlist("processStatus[]")
-        top5_mode = request.form.get("top5", "false").lower() == "true"
-
-        df = pd.read_excel(file, sheet_name="Data")
-        df.columns = df.columns.str.strip()
         df["Created"] = pd.to_datetime(df["Created"], errors="coerce")
         df = df.dropna(subset=["Created"])
-        df["Month"] = df["Created"].dt.strftime("%b %Y")
+        df["MonthStr"] = df["Created"].dt.strftime("%b %Y")
 
-        # Filter
-        df["หมวดหมู่2"] = df["หมวดหมู่2"].astype(str).str.lower().str.strip()
-        df["หมวดหมู่3"] = df["หมวดหมู่3"].astype(str).str.lower().str.strip()
-        if selected_cat2:
-            df = df[df["หมวดหมู่2"].isin(selected_cat2)]
-        if selected_cat3:
-            df = df[df["หมวดหมู่3"].isin(selected_cat3)]
-        if selected_status:
-            df = df[df["สถานะ"].isin(selected_status)]
-        if selected_process:
-            df = df[df["สถานะ Process"].isin(selected_process)]
-        if selected_months:
-            df = df[df["Month"].isin(selected_months)]
+        selected_months = months.split(",")
+        df = df[df["MonthStr"].isin(selected_months)]
 
-        # Group
-        pivot = df.pivot_table(index=["หมวดหมู่2", "หมวดหมู่3"], columns="Month", aggfunc="size", fill_value=0).reset_index()
-        month_cols = [m for m in selected_months if m in pivot.columns]
+        def normalize(col):
+            return df[col].dropna().astype(str).str.strip().str.lower()
+
+        if category2:
+            selected_cat2 = [v.lower() for v in category2.split(",")]
+            df = df[normalize("หมวดหมู่2").isin(selected_cat2)]
+        if category3:
+            selected_cat3 = [v.lower() for v in category3.split(",")]
+            df = df[normalize("หมวดหมู่3").isin(selected_cat3)]
+        if status:
+            selected_status = [v.lower() for v in status.split(",")]
+            df = df[normalize("สถานะ").isin(selected_status)]
+        if status_process:
+            selected_status_process = [v.lower() for v in status_process.split(",")]
+            df = df[normalize("สถานะ Process").isin(selected_status_process)]
+
+        df["หมวดหมู่2"] = df["หมวดหมู่2"].astype(str).str.strip()
+        df["หมวดหมู่3"] = df["หมวดหมู่3"].astype(str).str.strip()
+
+        pivot = pd.pivot_table(
+            df,
+            values="Ticket",
+            index=["หมวดหมู่2", "หมวดหมู่3"],
+            columns="MonthStr",
+            aggfunc="sum",
+            fill_value=0,
+        ).reset_index()
+
+        month_cols = [col for col in selected_months if col in pivot.columns]
         pivot["Grand Total"] = pivot[month_cols].sum(axis=1)
-        pivot = pivot[["หมวดหมู่2", "หมวดหมู่3"] + month_cols + ["Grand Total"]]
 
-        # สร้างคอลัมน์ A ลำดับหมวดหมู่2 ตาม Grand Total รวม
-        group_total = pivot.groupby("หมวดหมู่2")["Grand Total"].sum().reset_index()
-        group_total = group_total.sort_values("Grand Total", ascending=False).reset_index(drop=True)
-        group_total["ลำดับ"] = group_total.index + 1
+        grand_total_by_cat2 = pivot.groupby("หมวดหมู่2")["Grand Total"].transform("sum")
+        pivot["ลำดับ"] = pivot.groupby("หมวดหมู่2")["Grand Total"].rank(method="first", ascending=False).astype(int)
+        pivot["DEBUG_Total_หมวดหมู่2"] = grand_total_by_cat2
 
-        result = pivot.merge(group_total, on="หมวดหมู่2")
-        result = result.sort_values(by=["ลำดับ", "Grand Total"], ascending=[True, False])
+        if top5:
+            pivot = pivot.sort_values(["หมวดหมู่2", "Grand Total"], ascending=[True, False])
+            pivot = pivot.groupby("หมวดหมู่2").head(5)
 
-        if top5_mode:
-            result = result.groupby("หมวดหมู่2").head(5)
+        final = pivot.copy()
+        final = final.sort_values(by="DEBUG_Total_หมวดหมู่2", ascending=False)
+        final.insert(0, "A", final["DEBUG_Total_หมวดหมู่2"].rank(method="dense", ascending=False).astype(int))
+        final = final.drop(columns=["DEBUG_Total_หมวดหมู่2"])
 
-        result = result[["ลำดับ", "หมวดหมู่2", "หมวดหมู่3"] + month_cols + ["Grand Total"]]
-
-        # สร้างไฟล์ Excel
-        output = BytesIO()
+        output = io.BytesIO()
         with pd.ExcelWriter(output, engine="openpyxl") as writer:
-            result.to_excel(writer, index=False, sheet_name="Output2")
+            final.to_excel(writer, index=False, sheet_name="Output2")
         output.seek(0)
-
-        filename = f"Output2_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
-        return send_file(output, as_attachment=True, download_name=filename, mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-
+        return StreamingResponse(output, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                                 headers={"Content-Disposition": "attachment; filename=Output2.xlsx"})
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-if __name__ == "__main__":
-    app.run(debug=True)
+        return JSONResponse(content={"error": str(e)}, status_code=500)
