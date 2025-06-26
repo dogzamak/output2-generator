@@ -1,162 +1,139 @@
 
 <!DOCTYPE html>
-<html lang="th">
+<html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Output2 Generator</title>
-  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-  <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-  <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-  <style>
-    body { background-color: #e6f2e6; font-family: sans-serif; padding: 20px; }
-    h1 { color: #2f6633; }
-    .form-section { margin-bottom: 20px; }
-    .select2-container--default .select2-selection--multiple {
-      border: 1px solid #ccc; border-radius: 4px;
-    }
-    .upload-status { margin-top: 10px; color: green; }
-    .error { color: red; }
-  </style>
+    <meta charset="UTF-8">
+    <title>Output2 Generator</title>
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <style>
+        body {
+            background-color: #eef8ea;
+            padding: 2rem;
+        }
+        h1 {
+            color: #117733;
+        }
+        .select2-selection__choice__remove {
+            color: red !important;
+            margin-right: 4px;
+        }
+        .select2-container--default .select2-selection--multiple .select2-selection__choice {
+            background-color: #e0f2e9;
+            border-color: #a2d5b9;
+            color: #1c3b2e;
+        }
+    </style>
 </head>
 <body>
-  <h1>Output2 Generator <span style="font-size: 14px; color: gray;">(เวอร์ชัน 26/06/2025 20:27)</span></h1>
+    <div class="container">
+        <h1 class="mb-4">Output2 Generator</h1>
 
-  <div class="form-section">
-    <label>อัปโหลดไฟล์ Raw Data (Excel):</label>
-    <input type="file" id="fileInput" />
-    <button id="uploadBtn">Upload</button>
-    <div id="uploadProgress" class="upload-status"></div>
-    <div id="errorMessage" class="error"></div>
-  </div>
+        <div class="mb-3">
+            <label class="form-label fw-bold">อัปโหลดไฟล์ Raw Data (.xlsx):</label>
+            <input type="file" id="raw-file" class="form-control">
+            <button id="upload-btn" class="btn btn-success mt-2">📤 อัปโหลด</button>
+        </div>
 
-  <div id="filters" style="display:none;">
-    <div class="form-section">
-      <label>เลือกเดือน:</label>
-      <select id="monthSelect" multiple="multiple" style="width: 100%"></select>
+        <div class="progress mb-4" style="height: 25px;">
+            <div id="upload-progress" class="progress-bar bg-success" role="progressbar" style="width: 0%;">0%</div>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col">
+                <label class="form-label">เลือกเดือน:</label>
+                <select id="month-select" class="form-select select2" multiple="multiple"></select>
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col">
+                <label class="form-label">หมวดหมู่2:</label>
+                <button id="add-all-cat2" class="btn btn-outline-secondary btn-sm">Add All</button>
+                <select id="category2-select" class="form-select select2" multiple="multiple"></select>
+            </div>
+            <div class="col">
+                <label class="form-label">หมวดหมู่3:</label>
+                <button id="add-all-cat3" class="btn btn-outline-secondary btn-sm">Add All</button>
+                <select id="category3-select" class="form-select select2" multiple="multiple"></select>
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col">
+                <label class="form-label">สถานะ:</label>
+                <select id="status-select" class="form-select select2" multiple="multiple"></select>
+            </div>
+            <div class="col">
+                <label class="form-label">สถานะ Process:</label>
+                <select id="process-status-select" class="form-select select2" multiple="multiple"></select>
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">ตัวเลือก:</label><br/>
+            <input type="radio" name="topOption" value="top5" checked> Top 5
+            <input type="radio" name="topOption" value="all"> แสดงทั้งหมด
+        </div>
+
+        <button id="download-output2" class="btn btn-primary">📥 ดาวน์โหลด Output2</button>
     </div>
 
-    <div class="form-section">
-      <label>หมวดหมู่2:</label>
-      <button id="addAllCat2">Add All</button>
-      <select id="cat2Select" multiple="multiple" style="width: 100%"></select>
-    </div>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script>
+        $(document).ready(function () {
+            $('.select2').select2();
 
-    <div class="form-section">
-      <label>หมวดหมู่3:</label>
-      <button id="addAllCat3">Add All</button>
-      <select id="cat3Select" multiple="multiple" style="width: 100%"></select>
-    </div>
+            $('#upload-btn').on('click', function () {
+                const file = $('#raw-file')[0].files[0];
+                if (!file) return alert('กรุณาเลือกไฟล์');
 
-    <div class="form-section">
-      <label>สถานะ:</label>
-      <select id="statusSelect" multiple="multiple" style="width: 100%"></select>
-    </div>
+                const formData = new FormData();
+                formData.append("file", file);
 
-    <div class="form-section">
-      <label>สถานะ Process:</label>
-      <select id="processSelect" multiple="multiple" style="width: 100%"></select>
-    </div>
+                $.ajax({
+                    url: "https://output2-generator-production.up.railway.app/upload_raw_data",
+                    method: "POST",
+                    data: formData,
+                    contentType: false,
+                    processData: false,
+                    xhr: function () {
+                        var xhr = new window.XMLHttpRequest();
+                        xhr.upload.addEventListener("progress", function (evt) {
+                            if (evt.lengthComputable) {
+                                var percent = Math.round((evt.loaded / evt.total) * 100);
+                                $('#upload-progress').css("width", percent + "%").text(percent + "%");
+                            }
+                        }, false);
+                        return xhr;
+                    },
+                    success: function (data) {
+                        if (Array.isArray(data.months)) populateSelect("#month-select", data.months);
+                        if (Array.isArray(data.category2)) populateSelect("#category2-select", data.category2);
+                        if (Array.isArray(data.category3)) populateSelect("#category3-select", data.category3);
+                        if (Array.isArray(data.statuses)) populateSelect("#status-select", data.statuses);
+                        if (Array.isArray(data.process_statuses)) populateSelect("#process-status-select", data.process_statuses);
+                    },
+                    error: function (xhr) {
+                        alert("เกิดข้อผิดพลาดในการอัปโหลดไฟล์");
+                        console.error(xhr.responseText);
+                    }
+                });
+            });
 
-    <div class="form-section">
-      <label>ตัวเลือกการแสดงผล:</label><br>
-      <input type="radio" name="topOption" value="top5" checked> Top 5<br>
-      <input type="radio" name="topOption" value="all"> แสดงทั้งหมด
-    </div>
-
-    <button id="generateBtn">ดาวน์โหลด Output2</button>
-  </div>
-
-  <script>
-    const apiBase = "https://output2-generator-production.up.railway.app";
-
-    $(document).ready(function () {
-      $("#monthSelect, #cat2Select, #cat3Select, #statusSelect, #processSelect").select2();
-
-      $("#uploadBtn").click(function () {
-        const file = $("#fileInput")[0].files[0];
-        if (!file) return alert("กรุณาเลือกไฟล์ก่อน");
-
-        const formData = new FormData();
-        formData.append("file", file);
-
-        $("#uploadProgress").text("Uploading...");
-        $("#errorMessage").text("");
-
-        $.ajax({
-          url: apiBase + "/upload_raw_data",
-          type: "POST",
-          data: formData,
-          processData: false,
-          contentType: false,
-          success: function (res) {
-            if (!res || !Array.isArray(res.months)) {
-              $("#errorMessage").text("รูปแบบข้อมูลที่ได้จาก backend ไม่ถูกต้อง");
-              return;
+            function populateSelect(selector, items) {
+                const select = $(selector);
+                select.empty();
+                items.forEach(item => {
+                    select.append(new Option(item, item, false, false));
+                });
+                select.trigger('change');
             }
 
-            $("#filters").show();
-            populateSelect("#monthSelect", res.months);
-            populateSelect("#cat2Select", res.category2Options);
-            populateSelect("#cat3Select", res.category3Options);
-            populateSelect("#statusSelect", res.statusOptions);
-            populateSelect("#processSelect", res.processOptions);
-            $("#uploadProgress").text("อัปโหลดสำเร็จแล้ว");
-          },
-          error: function (err) {
-            $("#errorMessage").text("เกิดข้อผิดพลาดระหว่างอัปโหลด");
-          }
+            $('#add-all-cat2').click(() => $('#category2-select > option').prop('selected', true).trigger('change'));
+            $('#add-all-cat3').click(() => $('#category3-select > option').prop('selected', true).trigger('change'));
         });
-      });
-
-      function populateSelect(selector, items) {
-        if (!Array.isArray(items)) {
-          $(selector).html(""); return;
-        }
-        $(selector).empty();
-        items.forEach(item => {
-          $(selector).append(new Option(item, item, false, false));
-        });
-      }
-
-      $("#addAllCat2").click(function () {
-        const all = $("#cat2Select option").map(function () { return this.value; }).get();
-        $("#cat2Select").val(all).trigger("change");
-      });
-
-      $("#addAllCat3").click(function () {
-        const all = $("#cat3Select option").map(function () { return this.value; }).get();
-        $("#cat3Select").val(all).trigger("change");
-      });
-
-      $("#generateBtn").click(function () {
-        const payload = {
-          months: $("#monthSelect").val(),
-          category2: $("#cat2Select").val(),
-          category3: $("#cat3Select").val(),
-          status: $("#statusSelect").val(),
-          process: $("#processSelect").val(),
-          top_option: $("input[name='topOption']:checked").val()
-        };
-
-        $.ajax({
-          url: apiBase + "/generate_output2",
-          method: "POST",
-          contentType: "application/json",
-          data: JSON.stringify(payload),
-          xhrFields: { responseType: 'blob' },
-          success: function (data) {
-            const blob = new Blob([data], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-            const link = document.createElement("a");
-            link.href = URL.createObjectURL(blob);
-            link.download = "Output2.xlsx";
-            link.click();
-          },
-          error: function () {
-            alert("เกิดข้อผิดพลาดในการ generate ไฟล์");
-          }
-        });
-      });
-    });
-  </script>
+    </script>
 </body>
 </html>
